@@ -39,7 +39,7 @@ volatile uint32_t e_time;
 void triggerSensors(){
   currentSensor = 0;
   digitalWrite(TRIGGER, HIGH);
-  delay(100);
+  delay(1);
   digitalWrite(TRIGGER,LOW);
 }
 
@@ -84,12 +84,18 @@ void setMotorSpeed(MotorSettings* set){
   uint8_t lm = (uint8_t)abs(set->LM - 1) * 2;
   uint8_t rm = (uint8_t)abs(set->RM - 1) * 2;
 
+
+// Use encoders to avoid this
+  if (lm < 140) lm = 140;
+  if (rm < 140) rm = 140;
+
   Serial.println("MOTOR SETTINGS");
   Serial.println(lm);
   Serial.println(rm);
 
   analogWrite(SPEED_LEFT, lm);
   analogWrite(SPEED_RIGHT, rm);
+
 }
 
 unsigned long m_b = 0, m_a = 0;
@@ -121,13 +127,21 @@ void setup() {
 
 unsigned long distances[SENSOR_COUNT] = {0};
 
+unsigned long mma;
+
 void loop() {
   // put your main code here, to run repeatedly:
 
   m_a = millis();
-  if (m_a - m_b > 10){
+  if (m_a - m_b > 5){
     triggerSensors();
     m_b = millis();
+
+    for(int i=0; i<SENSOR_COUNT; i++){
+      buffers[i].pushChecked(sensors[i]);
+    
+      distances[i] = round(buffers[i].getRecent() * 0.0171);
+    }
   }
     /*Serial.print("Dystans: ");
     Serial.print(distances[i]);
@@ -135,13 +149,9 @@ void loop() {
     Serial.println(i);
     */
   //delay(100);
-  for(int i=0; i<SENSOR_COUNT; i++){
-    buffers[i].pushChecked(sensors[i]);
-    
-    distances[i] = round(buffers[i].getRecent() * 0.0171);
-  }
 
 
+/*
   Serial.print(sensors[0]);
   Serial.print(" : ");
   Serial.println(distances[0]);
@@ -154,10 +164,17 @@ void loop() {
   Serial.print(sensors[3]);
   Serial.print(" : ");
   Serial.println(distances[3]);
-
+*/
   MotorSettings ms;
+
+  mma = millis();
   ms = getRegulatorValues(distances);
 
+/*
+  Serial.print("TS Time: ");
+  Serial.print(millis()-mma);
+  Serial.println(" ms");
+*/
   Serial.println("------------");
   Serial.print("Left motor setting: ");
   Serial.println(ms.LM);
