@@ -1,17 +1,8 @@
-#define IN1 8
-#define IN2 9
-#define IN3 10
-#define IN4 11
-
-#define TRIGGER 4
-
-//Must be interrupt pin
-#define ECHO 2
-
-#define SENSOR_COUNT 2
-#define BUFFER_SIZE 10
-#define DISCARD_OFFSET 200
-#define MAX_FAILURES 4
+#include "constants.h"
+struct MotorSettings{
+  int8_t LM;
+  int8_t RM;  
+};
 
 struct SensorBuffer{
   uint32_t data[BUFFER_SIZE] = {0};
@@ -46,6 +37,7 @@ SensorBuffer buffers[SENSOR_COUNT];
 volatile uint32_t e_time;
 
 void triggerSensors(){
+  currentSensor = 0;
   digitalWrite(TRIGGER, HIGH);
   delay(100);
   digitalWrite(TRIGGER,LOW);
@@ -58,7 +50,7 @@ void setReverse(){
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
   
-  Serial.println("FORWARD");
+  Serial.println("REVERSE");
 }
 void setForward(){
   
@@ -67,7 +59,7 @@ void setForward(){
   digitalWrite(IN4, HIGH);
   digitalWrite(IN3, LOW);
   
-  Serial.println("REVERSE");
+  Serial.println("FORWARD");
 }
 void setLeft(){
   
@@ -76,7 +68,7 @@ void setLeft(){
   digitalWrite(IN4, HIGH);
   digitalWrite(IN3, LOW);
   
-  Serial.println("RIGHT");
+  Serial.println("LEFT");
 }
 void setRight(){
   
@@ -85,18 +77,34 @@ void setRight(){
   digitalWrite(IN3, HIGH);
   digitalWrite(IN4, LOW);
   
-  Serial.println("LEFT");
+  Serial.println("RIGHT");
+}
+
+void setMotorSpeed(MotorSettings* set){
+  uint8_t lm = (uint8_t)abs(set->LM - 1) * 2;
+  uint8_t rm = (uint8_t)abs(set->RM - 1) * 2;
+
+  Serial.println("MOTOR SETTINGS");
+  Serial.println(lm);
+  Serial.println(rm);
+
+  analogWrite(SPEED_LEFT, 255);
+  analogWrite(SPEED_RIGHT, 255);
 }
 
 unsigned long m_b = 0, m_a = 0;
 
 void setup() {
+
   Serial.begin(9600);
   
   pinMode(IN1, OUTPUT);
   pinMode(IN2, OUTPUT);
   pinMode(IN3, OUTPUT);
   pinMode(IN4, OUTPUT);
+
+  pinMode(SPEED_LEFT, OUTPUT);
+  pinMode(SPEED_RIGHT, OUTPUT);
 
   pinMode(TRIGGER, OUTPUT);
   pinMode(ECHO, INPUT);
@@ -107,17 +115,12 @@ void setup() {
   digitalWrite(IN4, LOW);
 
   attachInterrupt(digitalPinToInterrupt(ECHO), echoInterrupt, CHANGE);
-  attachInterrupt(digitalPinToInterrupt(3), test, CHANGE);
   m_b = millis();
 
 }
 
-  unsigned long distances[SENSOR_COUNT] = {0};
+unsigned long distances[SENSOR_COUNT] = {0};
 
-void test(){
-
-  Serial.println("VINT");
-}
 void loop() {
   // put your main code here, to run repeatedly:
 
@@ -138,15 +141,36 @@ void loop() {
     distances[i] = round(buffers[i].getRecent() * 0.0171);
   }
 
+
   Serial.print(sensors[0]);
   Serial.print(" : ");
   Serial.println(distances[0]);
   Serial.print(sensors[1]);
   Serial.print(" : ");
   Serial.println(distances[1]);
-  if (distances[0] < 10) setRight();
-  else if (distances[1] < 10) setLeft();
-  else setForward();
+  Serial.print(sensors[2]);
+  Serial.print(" : ");
+  Serial.println(distances[2]);
+  Serial.print(sensors[3]);
+  Serial.print(" : ");
+  Serial.println(distances[3]);
+
+  MotorSettings ms;
+  ms = getRegulatorValues(distances);
+
+  Serial.println("------------");
+  Serial.print("Left motor setting: ");
+  Serial.println(ms.LM);
+  Serial.print("Right motor setting: ");
+  Serial.println(ms.RM);
+  Serial.println("------------");
+
+  if (ms.LM > 0 && ms.RM > 0) setForward();
+  else if (ms.LM < 0 && ms.RM > 0) setLeft();
+  else if (ms.LM > 0 && ms.RM < 0) setRight();
+  else setReverse();
+
+  //setMotorSpeed(&ms);
 
   //delay(1000);
 }
