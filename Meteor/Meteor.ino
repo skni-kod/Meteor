@@ -88,8 +88,8 @@ void setMotorSpeed(MotorSettings* set){
   Serial.println(lm);
   Serial.println(rm);
 
-  analogWrite(SPEED_LEFT, 255);
-  analogWrite(SPEED_RIGHT, 255);
+  analogWrite(SPEED_LEFT, lm);
+  analogWrite(SPEED_RIGHT, rm);
 }
 
 unsigned long m_b = 0, m_a = 0;
@@ -170,7 +170,7 @@ void loop() {
   else if (ms.LM > 0 && ms.RM < 0) setRight();
   else setReverse();
 
-  //setMotorSpeed(&ms);
+  setMotorSpeed(&ms);
 
   //delay(1000);
 }
